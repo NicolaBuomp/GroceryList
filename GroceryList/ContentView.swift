@@ -11,6 +11,9 @@ import SwiftUI
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Item]
+    
+    @State private var itemTextFieldValue: String = ""
+    @FocusState private var isFocused: Bool
 
     func addEssentialFoods() {
         modelContext.insert(Item(title: "Banana", isCompleted: true))
@@ -48,6 +51,43 @@ struct ContentView: View {
                 }
             }
             .navigationBarTitle("Grocery List")
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 12) {
+                    TextField("Add item...", text: $itemTextFieldValue)
+                        .textFieldStyle(.plain)
+                        .padding(12)
+                        .background(.tertiary)
+                        .cornerRadius(12)
+                        .font(.title.weight(.light))
+                        .focused($isFocused)
+                        .onSubmit {
+                            withAnimation {
+                                if itemTextFieldValue.isEmpty { return }
+                                modelContext.insert(Item(title: itemTextFieldValue, isCompleted: false))
+                                itemTextFieldValue = ""
+                                isFocused = false
+                            }
+                        }
+                    
+                    Button {
+                        guard !itemTextFieldValue.isEmpty else {
+                             return
+                        }
+                        modelContext.insert(Item(title: itemTextFieldValue, isCompleted: false))
+                        itemTextFieldValue = ""
+                        isFocused = false
+                    } label: {
+                        Text("Add")
+                            .font(.title2.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.roundedRectangle)
+                    .controlSize(.extraLarge)
+                }
+                .padding()
+                .background(.bar)
+            }
             .overlay {
                 if items.isEmpty {
                     ContentUnavailableView("Empty Cart", systemImage: "cart.circle", description: Text("Add some items to your cart!"))
