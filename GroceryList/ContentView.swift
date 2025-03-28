@@ -7,20 +7,42 @@
 
 import SwiftData
 import SwiftUI
+import TipKit
+
+extension View {
+    @ViewBuilder
+    func conditionalPopoverTip<T: Tip>(_ condition: Bool, tip: T) -> some View {
+        if condition {
+            popoverTip(tip)
+        } else {
+            self
+        }
+    }
+}
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Item]
-    
+
     @State private var itemTextFieldValue: String = ""
     @FocusState private var isFocused: Bool
 
-    func addEssentialFoods() {
-        modelContext.insert(Item(title: "Banana", isCompleted: true))
-        modelContext.insert(Item(title: "Apples", isCompleted: false))
-        modelContext.insert(Item(title: "Oranges", isCompleted: .random()))
-        modelContext.insert(Item(title: "Oranges", isCompleted: .random()))
-        modelContext.insert(Item(title: "Oranges", isCompleted: .random()))
+    let buttonTip = ButtonTip()
+
+    func setupTips() {
+        do {
+            try Tips.resetDatastore()
+            Tips.showAllTipsForTesting()
+            try Tips.configure([
+                .displayFrequency(.immediate),
+            ])
+        } catch {
+            print("Error setting up tips: \(error.localizedDescription)")
+        }
+    }
+
+    init() {
+        setupTips()
     }
 
     var body: some View {
@@ -51,6 +73,11 @@ struct ContentView: View {
                 }
             }
             .navigationBarTitle("Grocery List")
+            .overlay {
+                if items.isEmpty {
+                    ContentUnavailableView("Empty Cart", systemImage: "cart.circle", description: Text("Add some items to your cart!"))
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 12) {
                     TextField("Add item...", text: $itemTextFieldValue)
@@ -68,10 +95,11 @@ struct ContentView: View {
                                 isFocused = false
                             }
                         }
-                    
+                        .conditionalPopoverTip(items.isEmpty, tip: buttonTip)
+
                     Button {
                         guard !itemTextFieldValue.isEmpty else {
-                             return
+                            return
                         }
                         modelContext.insert(Item(title: itemTextFieldValue, isCompleted: false))
                         itemTextFieldValue = ""
@@ -88,22 +116,6 @@ struct ContentView: View {
                 .padding()
                 .background(.bar)
             }
-            .overlay {
-                if items.isEmpty {
-                    ContentUnavailableView("Empty Cart", systemImage: "cart.circle", description: Text("Add some items to your cart!"))
-                }
-            }
-            .toolbar {
-                if items.isEmpty {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            addEssentialFoods()
-                        } label: {
-                            Label("Add sample items", systemImage: "carrot")
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -117,8 +129,6 @@ struct ContentView: View {
     let sampleData: [Item] = [
         Item(title: "Banana", isCompleted: true),
         Item(title: "Apples", isCompleted: false),
-        Item(title: "Oranges", isCompleted: .random()),
-        Item(title: "Oranges", isCompleted: .random()),
         Item(title: "Oranges", isCompleted: .random()),
     ]
 
